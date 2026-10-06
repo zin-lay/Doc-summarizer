@@ -1,0 +1,36 @@
+# Runs the app and a local Ollama model server together.
+#   docker compose up -d
+#   docker compose exec ollama ollama pull qwen2.5:7b
+# Then open http://localhost:3000
+services:
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama-models:/root/.ollama
+    # Uncomment to use an NVIDIA GPU (requires the NVIDIA Container Toolkit):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+      OLLAMA_URL: http://ollama:11434
+    ports:
+      - "127.0.0.1:3000:3000"   # change to "3000:3000" to allow other computers (set APP_PASSWORD first)
+
+volumes:
+  ollama-models:
