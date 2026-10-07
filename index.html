@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Document Summarizer</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+<script src="/vendor/pdf.min.js"></script>
+<script src="/vendor/mammoth.browser.min.js"></script>
+<script src="/vendor/jszip.min.js"></script>
+<script src="/vendor/marked.min.js"></script>
+<script src="/vendor/purify.min.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 36 36" width="34" height="34" fill="none">
+          <rect x="7" y="4" width="19" height="25" rx="2.5" fill="currentColor" opacity="0.1"/>
+          <rect x="7.75" y="4.75" width="17.5" height="23.5" rx="1.9" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M11.5 11.5h10M11.5 15.5h10M11.5 19.5h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M19 24.5l9.5-9.6a2 2 0 0 1 2.9 2.8L21.8 27.4l-4 1.1 1.2-4z" fill="var(--accent)" stroke="var(--paper)" stroke-width="1.1" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      <div class="brand-text">
+        <h1>Document Summarizer</h1>
+        <p>Load a document, get a clear summary you can keep.</p>
+      </div>
+    </div>
+    <span class="model" id="model">Connecting…</span>
+  </header>
+
+  <div class="grid">
+    <!-- SOURCE -->
+    <section class="pane controls" aria-labelledby="src-h">
+      <h2 id="src-h">Source document</h2>
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose a file to summarize">
+        <strong>Drop a file here or click to choose</strong>
+        <span>PDF, Word (.docx), PowerPoint (.pptx), .txt, .md, .csv, .html</span>
+      </div>
+      <input type="file" id="file" accept=".pdf,.docx,.pptx,.txt,.md,.markdown,.csv,.html,.htm,.json,.log" hidden>
+      <div class="or">or paste text</div>
+      <textarea id="text" placeholder="Paste the document text here…"></textarea>
+      <div class="doc-meta">
+        <span id="docName">No document loaded</span>
+        <span><span id="wc">0 words</span> · <button class="link" id="clear" type="button">Clear</button></span>
+      </div>
+
+      <div class="field">
+        <label class="l">Summary type</label>
+        <div class="modes" id="modes" role="group" aria-label="Summary type"></div>
+      </div>
+      <div class="field row">
+        <div>
+          <label class="l" for="length">Length</label>
+          <select id="length">
+            <option value="short">Short</option>
+            <option value="medium" selected>Medium</option>
+            <option value="detailed">Detailed</option>
+          </select>
+        </div>
+        <div>
+          <label class="l" for="lang">Output language</label>
+          <select id="lang">
+            <option value="same">Same as document</option>
+            <option value="English">English</option>
+            <option value="Japanese">日本語 (Japanese)</option>
+            <option value="Simplified Chinese">简体中文</option>
+            <option value="Korean">한국어</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label class="l" for="focus">Focus (optional)</label>
+        <input type="text" id="focus" placeholder="e.g. budget impact, deadlines, risks for the sales team">
+      </div>
+      <div class="actions">
+        <button class="btn" id="go" type="button" disabled>Summarize</button>
+        <button class="btn ghost" id="stop" type="button" hidden>Stop</button>
+      </div>
+      <p class="notice" id="unavail" hidden></p>
+    </section>
+
+    <!-- OUTPUT -->
+    <section class="pane result" aria-labelledby="out-h">
+      <div class="out-head">
+        <h2 id="out-h" style="margin:0">Result</h2>
+        <div style="display:flex;gap:8px">
+          <button class="btn ghost" id="copy" type="button" disabled>Copy</button>
+          <span id="dlGroup" style="display:flex;gap:8px">
+            <button class="btn ghost dl" data-fmt="docx" type="button" disabled>Word (.docx)</button>
+            <button class="btn ghost dl" data-fmt="pptx" type="button" disabled>PowerPoint (.pptx)</button>
+            <button class="btn ghost dl" data-fmt="md" type="button" disabled>.md</button>
+          </span>
+        </div>
+      </div>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" aria-selected="true" id="tab-sum" data-tab="sum">Summary</button>
+        <button class="tab" role="tab" aria-selected="false" id="tab-qa" data-tab="qa">Ask the document</button>
+      </div>
+
+      <div id="panel-sum" role="tabpanel">
+        <div class="status" id="status" aria-live="polite"></div>
+        <div class="progress" id="prog"><i></i></div>
+        <div class="summary" id="out"><p class="empty">Load a document and choose Summarize. The result appears here.</p></div>
+      </div>
+
+      <div id="panel-qa" role="tabpanel" hidden>
+        <div class="chat">
+          <div class="msgs" id="msgs"><p class="empty">Ask anything about the loaded document. Answers cite only what's in it.</p></div>
+          <div class="ask">
+            <input type="text" id="q" placeholder="e.g. What are the main deadlines?" aria-label="Your question">
+            <button class="btn" id="askBtn" type="button" disabled>Ask</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="recent" id="recentWrap" hidden>
+        <h2>Recent summaries <small style="font-weight:400;color:var(--muted)">(saved in this browser only)</small></h2>
+        <ul id="recent"></ul>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script src="export.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
